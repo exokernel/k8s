@@ -1,1 +1,4 @@
 .claude/settings.local.json
+
+# VPA install: cloned kubernetes/autoscaler repo (run vpa-up.sh / vpa-down.sh from it)
+autoscaler/
