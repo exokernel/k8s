@@ -2,13 +2,53 @@
 
 Following https://kubernetes.io/docs/tasks/run-application/horizontal-pod-autoscale-walkthrough/
 
-## Environment (already set up)
+## Environment
 
-- Colima (Docker runtime) started
-- Kind cluster `hpa` created — context `kind-hpa`
-- metrics-server installed and patched with `--kubelet-insecure-tls` (required for Kind)
+### 1. Start the Docker runtime (Colima)
 
-Sanity check:
+```sh
+colima start
+```
+
+### 2. Create the Kind cluster
+
+```sh
+kind create cluster --name hpa
+```
+
+This sets your kubectl context to `kind-hpa`. Confirm:
+
+```sh
+kubectl config current-context   # -> kind-hpa
+```
+
+### 3. Install metrics-server
+
+```sh
+kubectl apply -f https://github.com/kubernetes-sigs/metrics-server/releases/latest/download/components.yaml
+```
+
+### 4. Patch metrics-server for Kind
+
+Kind's kubelets serve their metrics endpoint with a self-signed cert that
+metrics-server won't trust by default, so it never becomes ready and
+`kubectl top` returns `Metrics API not available`. Add `--kubelet-insecure-tls`
+to skip that cert verification (fine for a local cluster):
+
+```sh
+kubectl patch -n kube-system deployment metrics-server --type=json \
+  -p '[{"op":"add","path":"/spec/template/spec/containers/0/args/-","value":"--kubelet-insecure-tls"}]'
+```
+
+Wait for it to roll out and become available:
+
+```sh
+kubectl rollout status -n kube-system deployment/metrics-server
+```
+
+### Sanity check
+
+Metrics take ~15-30s to start flowing after the patch. Then:
 
 ```sh
 kubectl top nodes
