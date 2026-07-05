@@ -1,0 +1,42 @@
+apiVersion: apps/v1
+kind: Deployment
+metadata:
+  name: nginx
+spec:
+  replicas: 1
+  selector:
+    matchLabels:
+      app: nginx
+  template:
+    metadata:
+      labels:
+        app: nginx
+    spec:
+      containers:
+        - name: nginx
+          image: nginx:alpine
+          ports:
+            - containerPort: 80
+---
+apiVersion: keda.sh/v1alpha1
+kind: ScaledObject
+metadata:
+  name: nginx-cron
+spec:
+  scaleTargetRef:
+    name: nginx
+  minReplicaCount: 0 # scale to zero outside the cron windows
+  cooldownPeriod: 60 # wait 60s after triggers go inactive before dropping to 0 (default 300)
+  advanced:
+    horizontalPodAutoscalerConfig:
+      behavior:
+        scaleDown:
+          stabilizationWindowSeconds: 0 # skip the HPA's 5-min downscale stabilization for the demo
+  triggers:
+    # Active for the first 5 minutes of every 10-minute block (:00-:05, :10-:15, ...)
+    - type: cron
+      metadata:
+        timezone: Etc/UTC
+        start: 0,10,20,30,40,50 * * * *
+        end: 5,15,25,35,45,55 * * * *
+        desiredReplicas: "5"
