@@ -144,6 +144,40 @@ The two main node autoscalers, per the k8s docs:
 Both decide based on pod *requests* and scheduling constraints — a node full
 of idle-but-requesting pods will not be scaled down.
 
+## Node autoscaling on GKE (what we actually run)
+
+Karpenter's vendor-maintained providers are **AWS** ([aws/karpenter-provider-aws](https://github.com/aws/karpenter-provider-aws))
+and **Azure** ([Azure/karpenter-provider-azure](https://github.com/Azure/karpenter-provider-azure)).
+There is no Google-maintained GCP provider — the only GCP flavor is a third-party
+project ([cloudpilot-ai/karpenter-provider-gcp](https://github.com/cloudpilot-ai/karpenter-provider-gcp)),
+so on **GKE you use Google's native options** rather than Karpenter. The concepts
+from this walkthrough still map directly (all key off pending pods and their
+resource requests); only the implementation differs:
+
+| GKE option                | Model                                                              | Karpenter analog       |
+|---------------------------|-------------------------------------------------------------------|------------------------|
+| **Cluster autoscaler**    | Resizes existing node pools within a min/max you set               | Cluster Autoscaler     |
+| **Node pool auto-creation** (a.k.a. node auto-provisioning) | Creates and deletes right-sized node pools on demand to fit pending pods | Karpenter (group-less) |
+| **Autopilot**             | Nodes fully managed by Google; you only submit pods                | (no node mgmt at all)  |
+
+Node pool auto-creation is the closest match to Karpenter's group-less,
+provision-on-demand model; on current GKE it's configured per-workload via a
+`ComputeClass`. Autopilot goes further and hides nodes entirely. All three
+decide on **resource requests, not live usage**, and respect PodDisruptionBudgets
+on scale-down, same as Karpenter.
+
+Sources (verified 2026-07):
+- Cluster autoscaler — [*About GKE cluster autoscaling*](https://cloud.google.com/kubernetes-engine/docs/concepts/cluster-autoscaler):
+  "resizes the number of nodes in a given node pool, based on the demands of your
+  workloads … based on the resource requests (rather than actual resource
+  utilization)."
+- Node pool auto-creation — [*Configure node pool auto-creation*](https://cloud.google.com/kubernetes-engine/docs/how-to/node-auto-provisioning):
+  "letting GKE automatically create node pools for pending Pods," including
+  "deleting the node pools when they're empty."
+- Autopilot — [*GKE Autopilot overview*](https://cloud.google.com/kubernetes-engine/docs/concepts/autopilot-overview):
+  "Google manages your infrastructure configuration, including your nodes,
+  scaling, security, and other preconfigured settings."
+
 ## Teardown
 
 ```sh
