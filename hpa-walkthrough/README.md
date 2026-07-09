@@ -73,6 +73,18 @@ kubectl get hpa
 
 (First reading shows `<unknown>/50%` for ~15-30s until metrics arrive.)
 
+**Faster for a demo:** the command above uses the default 300s (5-min)
+scale-down stabilization window, so step 4 is slow to show. Apply
+[hpa-demo.yaml](hpa-demo.yaml) instead — same 50% target and 1-10 range, but
+with `behavior.scaleDown.stabilizationWindowSeconds: 15` so replicas drop back
+within ~15-30s of load stopping (this needs the `autoscaling/v2` `behavior`
+field, which `kubectl autoscale` can't set):
+
+```sh
+kubectl apply -f hpa-demo.yaml
+kubectl get hpa
+```
+
 ## 3. Increase load
 
 In a **separate terminal**, generate load:
@@ -91,7 +103,8 @@ kubectl get hpa php-apache --watch
 ## 4. Stop load
 
 Stop the load generator (Ctrl+C in its terminal). Replicas scale back down
-to 1 after a few minutes (default 5-min stabilization window).
+to 1 after the scale-down stabilization window: a few minutes with the default
+`kubectl autoscale` HPA, or ~15-30s if you applied [hpa-demo.yaml](hpa-demo.yaml).
 
 ## Optional: autoscale on multiple / custom metrics
 

@@ -1,0 +1,27 @@
+# Faster-for-demo HPA: same 50% CPU target / 1-10 replicas as `kubectl autoscale`,
+# but with a short scale-down stabilization window so replicas drop back quickly
+# after load stops (default is 300s / 5 min). Uses the autoscaling/v2 `behavior`
+# field, which `kubectl autoscale` can't express.
+apiVersion: autoscaling/v2
+kind: HorizontalPodAutoscaler
+metadata:
+  name: php-apache
+spec:
+  scaleTargetRef:
+    apiVersion: apps/v1
+    kind: Deployment
+    name: php-apache
+  minReplicas: 1
+  maxReplicas: 10
+  metrics:
+    - type: Resource
+      resource:
+        name: cpu
+        target:
+          type: Utilization
+          averageUtilization: 50
+  behavior:
+    scaleDown:
+      stabilizationWindowSeconds: 15   # default 300; how long HPA waits before scaling down
+    scaleUp:
+      stabilizationWindowSeconds: 0    # default 0; scale up immediately (explicit for the demo)

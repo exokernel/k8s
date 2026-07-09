@@ -29,3 +29,8 @@ fight.)
 - **[karpenter-walkthrough](karpenter-walkthrough/README.md)** — node
   autoscaling with Karpenter's KWOK provider (fake nodes, real control loop):
   watch pending pods provision nodes, then consolidation remove them.
+
+## Further reading
+
+See [REFERENCES.md](REFERENCES.md) for the official docs behind each tier,
+grouped by topic with notes on what to internalize.
