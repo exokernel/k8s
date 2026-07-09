@@ -22,13 +22,38 @@ This sets your kubectl context to `kind-hpa`. Confirm:
 kubectl config current-context   # -> kind-hpa
 ```
 
-### 3. Install metrics-server
+### 3. Pre-pull images (optional, for a reliable demo)
+
+Image pulls from `registry.k8s.io` occasionally stall inside the Colima VM
+(the blobs redirect to Artifact Registry, and the guest's containerd can wedge),
+leaving pods stuck in `ContainerCreating` — including the metrics-server install
+in the next step. Before presenting, pre-pull every image the demo uses into the
+Kind node so nothing hits the network live (`colima restart` also clears a stuck
+pull if one happens):
+
+```sh
+for img in \
+  registry.k8s.io/metrics-server/metrics-server:v0.8.1 \
+  registry.k8s.io/hpa-example \
+  busybox:1.28 ; do
+  docker exec hpa-control-plane crictl pull "$img"
+done
+```
+
+(metrics-server version tracks whatever `components.yaml` pins; v0.8.1 is current.)
+
+Note: `registry.k8s.io/hpa-example` is an old **amd64-only** image (no arm64
+variant), so on Apple Silicon it pulls the amd64 build and runs under emulation.
+That makes it the slow one to pull and start — expect the php-apache pod to take
+a bit longer to come up. Pre-pulling it here gets that wait out of the way.
+
+### 4. Install metrics-server
 
 ```sh
 kubectl apply -f https://github.com/kubernetes-sigs/metrics-server/releases/latest/download/components.yaml
 ```
 
-### 4. Patch metrics-server for Kind
+### 5. Patch metrics-server for Kind
 
 Kind's kubelets serve their metrics endpoint with a self-signed cert that
 metrics-server won't trust by default, so it never becomes ready and

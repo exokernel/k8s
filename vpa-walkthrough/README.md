@@ -17,8 +17,37 @@ for details on each step):
 ```sh
 colima start
 kind create cluster --name vpa           # context: kind-vpa
+```
 
-# metrics-server (VPA's recommender reads from the resource metrics API)
+### Pre-pull images (optional, for a reliable demo)
+
+Image pulls from `registry.k8s.io` occasionally stall inside the Colima VM
+(the blobs redirect to Artifact Registry, and the guest's containerd can wedge),
+leaving pods stuck in `ContainerCreating` — including the metrics-server and VPA
+installs below. Before presenting, pre-pull every image the demo uses
+(metrics-server, the three VPA components, and the hamster workload) into the
+Kind node so nothing hits the network live (`colima restart` also clears a stuck
+pull if one happens):
+
+```sh
+for img in \
+  registry.k8s.io/metrics-server/metrics-server:v0.8.1 \
+  registry.k8s.io/autoscaling/vpa-recommender:1.7.0 \
+  registry.k8s.io/autoscaling/vpa-updater:1.7.0 \
+  registry.k8s.io/autoscaling/vpa-admission-controller:1.7.0 \
+  registry.k8s.io/ubuntu-slim:0.14 ; do
+  docker exec vpa-control-plane crictl pull "$img"
+done
+```
+
+(Versions track the manifests: metrics-server from `components.yaml`, the
+`vpa-*` images from the autoscaler `deploy/` manifests, both current above.)
+
+### Install metrics-server
+
+VPA's recommender reads from the resource metrics API:
+
+```sh
 kubectl apply -f https://github.com/kubernetes-sigs/metrics-server/releases/latest/download/components.yaml
 kubectl patch -n kube-system deployment metrics-server --type=json \
   -p '[{"op":"add","path":"/spec/template/spec/containers/0/args/-","value":"--kubelet-insecure-tls"}]'
